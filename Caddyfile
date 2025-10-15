@@ -1,0 +1,31 @@
+localhost {
+    # Web UI
+    handle /app* {
+        reverse_proxy web:80
+    }
+
+    # API endpoints
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    # Calendar feed
+    handle /calendar/* {
+        reverse_proxy api:8000
+    }
+
+    # Telegram bot webhook
+    handle /bot* {
+        reverse_proxy api:8000
+    }
+
+    # Health check
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    # Default to web UI
+    handle {
+        reverse_proxy web:80
+    }
+}
