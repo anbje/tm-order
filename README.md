@@ -1,3 +1,10 @@
+# IMPORTANT: PROJECT_LOG.md IS SACRED
+# --------------------------------------------------
+# Before making ANY changes, deployments, or pushes:
+# You MUST read and follow /home/av/RAMA/tm_order/PROJECT_LOG.md
+# This file contains production handover rules, environment matrix, and disaster recovery steps.
+# Violating these rules risks data loss, downtime, or security breaches.
+# --------------------------------------------------
 # TM-Order: Translation Management System
 
 Minimal freelance translation business management: orders, deadlines, reminders, invoices.
