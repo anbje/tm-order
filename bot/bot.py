@@ -49,6 +49,48 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # TODO: Extract order ID from context and update via API
     await update.message.reply_text("✅ Order marked as delivered!")
 
+
+async def undelivered(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all undelivered orders with deadlines"""
+    try:
+        response = requests.get(f"{API_URL}/api/orders/undelivered")
+        response.raise_for_status()
+        orders = response.json()
+        if not orders:
+            await update.message.reply_text("📋 No undelivered orders.")
+            return
+        msg = "📋 **Undelivered Orders:**\n\n"
+        for order in orders:
+            deadline = datetime.fromisoformat(order['deadline_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M')
+            msg += f"• ID {order['id']}: {order['customer_name']} - {order['topic']} (Deadline: {deadline})\n"
+        await update.message.reply_text(msg)
+    except Exception as e:
+        logger.error(f"Error fetching undelivered orders: {e}")
+        await update.message.reply_text("❌ Error fetching undelivered orders.")
+
+
+async def undelivered_client(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List undelivered orders for a specific client"""
+    if not context.args:
+        await update.message.reply_text("❌ Usage: /undelivered_client <client_name>")
+        return
+    client_name = ' '.join(context.args)
+    try:
+        response = requests.get(f"{API_URL}/api/orders/undelivered/{client_name}")
+        response.raise_for_status()
+        orders = response.json()
+        if not orders:
+            await update.message.reply_text(f"📋 No undelivered orders for client '{client_name}'.")
+            return
+        msg = f"📋 **Undelivered Orders for {client_name}:**\n\n"
+        for order in orders:
+            deadline = datetime.fromisoformat(order['deadline_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M')
+            msg += f"• ID {order['id']}: {order['topic']} (Deadline: {deadline})\n"
+        await update.message.reply_text(msg)
+    except Exception as e:
+        logger.error(f"Error fetching undelivered orders for client {client_name}: {e}")
+        await update.message.reply_text(f"❌ Error fetching undelivered orders for client '{client_name}'.")
+
 # Diagnostic handler for all updates
 async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -68,6 +110,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/start - Welcome message\n"
         "/help - Show this help\n"
         "/done - Mark order as delivered\n"
+        "/undelivered - List all undelivered orders\n"
+        "/undelivered_client <name> - List undelivered orders for specific client\n"
         "/neworder - Create a new order (interactive)\n\n"
         "**How to use:**\n"
         "1. Create orders via web UI or /neworder\n"
@@ -220,6 +264,8 @@ def main():
     application.add_handler(CommandHandler("start", start), group=1)
     application.add_handler(CommandHandler("help", help_command), group=1)
     application.add_handler(CommandHandler("done", done), group=1)
+    application.add_handler(CommandHandler("undelivered", undelivered), group=1)
+    application.add_handler(CommandHandler("undelivered_client", undelivered_client), group=1)
     application.add_handler(CommandHandler("neworder", neworder_start), group=1)
     application.add_handler(CommandHandler("cancel", neworder_cancel), group=1)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text), group=1)

@@ -166,10 +166,30 @@ def list_orders(
     return results
 
 
-# Duplicate /orders route in case the reverse proxy strips /api
-# @app.get("/orders", response_model=list[OrderResponse])
-# def list_orders_no_prefix(status: str | None = None, db: Session = Depends(get_db), request: Request = None):
-#     return list_orders(status=status, db=db, request=request)
+@app.get("/api/orders/undelivered", response_model=list[OrderResponse])
+def list_undelivered_orders(db: Session = Depends(get_db), request: Request = None):
+    """List all undelivered orders with deadlines"""
+    query = db.query(Order).filter(Order.status != "delivered").order_by(Order.deadline_at)
+    results = query.all()
+    try:
+        client_addr = request.client.host if request and request.client else 'unknown'
+    except Exception:
+        client_addr = 'unknown'
+    logging.info(f"list_undelivered_orders: returned {len(results)} rows; remote={client_addr}")
+    return results
+
+
+@app.get("/api/orders/undelivered/{client_name}", response_model=list[OrderResponse])
+def list_undelivered_orders_by_client(client_name: str, db: Session = Depends(get_db), request: Request = None):
+    """List undelivered orders for a specific client"""
+    query = db.query(Order).filter(Order.status != "delivered", Order.customer_name == client_name).order_by(Order.deadline_at)
+    results = query.all()
+    try:
+        client_addr = request.client.host if request and request.client else 'unknown'
+    except Exception:
+        client_addr = 'unknown'
+    logging.info(f"list_undelivered_orders_by_client: client={client_name}, returned {len(results)} rows; remote={client_addr}")
+    return results
 
 
 # @app.get("/api/debug/orders_count")
