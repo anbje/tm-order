@@ -4,13 +4,15 @@
 
 ### Phase 1: Order Listing & Delivery Core
 
-**1.1. List Undelivered Orders**
+**1.1. List Undelivered Orders ✅ COMPLETED**
 - Telegram: `/undelivered` command lists all undelivered orders with deadlines.
 - Web UI: Add filter/view for undelivered orders, sorted by deadline.
+- **Implementation**: Added `/api/orders/undelivered` endpoint and `/undelivered` bot command.
 
 **1.2. List Undelivered Orders by Client**
-- Telegram: `/undelivered_client <client>` lists undelivered orders for a specific client.
+- Telegram: `/undelivered_client <client>` command lists undelivered orders for a specific client.
 - Web UI: Add client filter to undelivered orders view.
+- **Implementation**: Added `/api/orders/undelivered/{client_name}` endpoint and `/undelivered_client <name>` bot command.
 
 **1.3. List Delivered Orders**
 - Telegram: `/delivered` command lists delivered orders (client, description, deadline, delivery_time).
