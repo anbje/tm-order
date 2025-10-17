@@ -14,13 +14,15 @@
 - Web UI: Add client filter to undelivered orders view.
 - **Implementation**: Added `/api/orders/undelivered/{client_name}` endpoint and `/undelivered_client <name>` bot command.
 
-**1.3. List Delivered Orders**
+**1.3. List Delivered Orders ✅ COMPLETED**
 - Telegram: `/delivered` command lists delivered orders (client, description, deadline, delivery_time).
 - Web UI: Add delivered orders view with relevant columns.
+- **Implementation**: Added `/api/orders/delivered` endpoint and `/delivered` bot command.
 
 **1.4. List Delivered Orders by Client**
 - Telegram: `/delivered_client <client>` lists delivered orders for a specific client.
 - Web UI: Add client filter to delivered orders view.
+- **Implementation**: Added `/api/orders/delivered/{client_name}` endpoint and `/delivered_client <name>` bot command.
 
 **1.5. Deliver Order**
 - Telegram: `/deliver` command lists all undelivered orders, allows selection, marks as delivered.
