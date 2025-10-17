@@ -187,4 +187,13 @@ HTTPS cert:           auto by Caddy, no action needed
 | Caddy/SSL issues (ERR_SSL_PROTOCOL_ERROR) after redeploy | Checked Caddy logs, confirmed certificate issuance, verified ports 80/443 open, cleared browser cache | Caddy logs are authoritative for SSL issues; browser cache and DNS can mask real status |
 | Docker Compose errors (ContainerConfig) after image cleanup | Ran docker-compose down --volumes, pruned system, rebuilt all images | Full cleanup and rebuild may be required after major image or volume changes |
 
+#  12.  BOT TOKEN, DUPLICATE INSTANCE & ORDER FLOW RECOVERY (2025-10-17)
+| Issue | Resolution | Key Lessons |
+|---|---|---|
+| Telegram bot orders not appearing in web UI | Found bot was using invalid token ("0" vs "O"); updated .env with correct token, rebuilt/restarted bot container | Always copy bot token exactly; check for similar-looking characters (O/0) |
+| Bot still failed after token fix | Discovered multiple bot instances running (local + prod); Telegram only allows one polling instance | Only one bot instance per token; stop all others before running in production |
+| Orders now flow end-to-end | Confirmed by sending test order, checking DB, API logs, and web UI | For any integration issue, check logs for each service, confirm environment variables, and test full flow |
+
+> Documented by Copilot: This section records the resolution of a critical Telegram bot integration issue, including token mismatch, duplicate instance conflict, and end-to-end order flow validation. Review if bot orders ever fail to appear in the web UI.
+
 > Documented by Copilot: This section summarizes a critical production recovery, git hygiene, and deployment troubleshooting workflow. Review before future major upgrades or if similar symptoms recur.
