@@ -104,8 +104,16 @@
                         <input type="text" id="edit-topic">
                     </div>
                     <div>
-                        <label>Deadline:</label>
+                        <label>Deadline (Stockholm time):</label>
                         <input type="datetime-local" id="edit-deadline" required>
+                    </div>
+                    <div>
+                        <label>Status:</label>
+                        <select id="edit-status" required>
+                            <option value="pending">Pending</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
                     </div>
                     <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px;">
                         <button type="button" onclick="closeEditModal()" style="background:#95a5a6;color:white;border:none;padding:8px 16px;border-radius:4px;">Cancel</button>
@@ -233,10 +241,15 @@
                         document.getElementById('edit-order-id').textContent = order.id;
                         document.getElementById('edit-customer').value = order.customer_name;
                         document.getElementById('edit-topic').value = order.topic || '';
+                        document.getElementById('edit-status').value = order.status;
                         
-                        // Convert ISO datetime to datetime-local format
-                        const deadline = new Date(order.deadline_at);
-                        const localDatetime = deadline.toISOString().slice(0, 16);
+                        // Convert UTC deadline to Stockholm local time for display
+                        const deadlineUTC = new Date(order.deadline_at);
+                        // Stockholm is UTC+1 (standard) or UTC+2 (DST)
+                        // For simplicity, assume UTC+1 for now (can be improved with proper timezone library)
+                        const stockholmOffset = 60; // minutes
+                        const deadlineStockholm = new Date(deadlineUTC.getTime() + (stockholmOffset * 60 * 1000));
+                        const localDatetime = deadlineStockholm.toISOString().slice(0, 16);
                         document.getElementById('edit-deadline').value = localDatetime;
                         
                         // Show modal
@@ -271,8 +284,18 @@
             const data = {
                 customer_name: document.getElementById('edit-customer').value,
                 topic: document.getElementById('edit-topic').value,
-                deadline_at: document.getElementById('edit-deadline').value
+                status: document.getElementById('edit-status').value
             };
+            
+            // Convert Stockholm local time to UTC for storage
+            const stockholmDatetime = document.getElementById('edit-deadline').value;
+            if (stockholmDatetime) {
+                const stockholmDate = new Date(stockholmDatetime);
+                // Convert from Stockholm time (assume UTC+1) back to UTC
+                const stockholmOffset = 60; // minutes
+                const utcDate = new Date(stockholmDate.getTime() - (stockholmOffset * 60 * 1000));
+                data.deadline_at = utcDate.toISOString();
+            }
             
             try {
                 const resp = await fetch(`${API_URL}/api/orders/${currentEditingOrder.id}`, {

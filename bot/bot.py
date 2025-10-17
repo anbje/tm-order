@@ -463,16 +463,22 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await neworder_words(update, context)
 
 def check_reminders():
-    """Background job to check for upcoming deadlines"""
+    """Background job to check for upcoming deadlines and send reminders"""
     try:
         response = requests.get(f"{API_URL}/api/orders/check-reminders")
         if response.status_code == 200:
-            orders = response.json()
-            for order in orders:
-                # TODO: Send reminder message to user
-                logger.info(f"Reminder needed for order #{order['id']}")
-                # Mark as sent
-                requests.post(f"{API_URL}/api/orders/{order['id']}/mark-reminder-sent")
+            reminders = response.json()
+            for reminder in reminders:
+                # TODO: Send reminder message to user via Telegram
+                logger.info(f"Sending {reminder['reminder_type']} reminder for order #{reminder['id']}: {reminder['customer_name']}")
+                
+                # For now, just log the message that would be sent
+                print(f"REMINDER: {reminder['message']}")
+                
+                # Mark reminder as sent
+                requests.post(f"{API_URL}/api/orders/{reminder['id']}/mark-reminder-sent?reminder_type={reminder['reminder_type']}")
+        else:
+            logger.error(f"Failed to check reminders: HTTP {response.status_code}")
     except Exception as e:
         logger.error(f"Error checking reminders: {e}")
 
