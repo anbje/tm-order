@@ -165,6 +165,160 @@ async def deliver(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error delivering order {order_id}: {e}")
         await update.message.reply_text(f"❌ Error delivering order {order_id}.")
 
+
+async def update_order_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start interactive order update process"""
+    if not context.args:
+        await update.message.reply_text("❌ Usage: /update_order <order_id>")
+        return
+    
+    try:
+        order_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("❌ Invalid order ID. Please provide a number.")
+        return
+    
+    # Check if order exists
+    try:
+        response = requests.get(f"{API_URL}/api/orders/{order_id}")
+        response.raise_for_status()
+        order = response.json()
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            await update.message.reply_text(f"❌ Order {order_id} not found.")
+            return
+        else:
+            await update.message.reply_text(f"❌ Error checking order {order_id}.")
+            return
+    except Exception as e:
+        logger.error(f"Error checking order {order_id}: {e}")
+        await update.message.reply_text(f"❌ Error checking order {order_id}.")
+        return
+    
+    # Store order info in user data and start conversation
+    if context.user_data is None:
+        context.user_data = {}
+    
+    context.user_data['updating_order_id'] = order_id
+    context.user_data['updating_order'] = order
+    
+    await update.message.reply_text(
+        f"📝 **Update Order {order_id}**\n"
+        f"• Client: {order['customer_name']}\n"
+        f"• Topic: {order['topic']}\n"
+        f"• Deadline: {datetime.fromisoformat(order['deadline_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M')}\n\n"
+        f"**What would you like to update?**\n"
+        f"• `customer` - Customer name\n"
+        f"• `topic` - Topic/description\n"
+        f"• `deadline` - Deadline (YYYY-MM-DD HH:MM)\n"
+        f"• `cancel` - Cancel update\n\n"
+        f"Reply with the field name:"
+    )
+    
+    context.user_data['state'] = 'update_field'
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle text messages for conversation states"""
+    if not context.user_data or 'state' not in context.user_data:
+        # No active conversation, ignore
+        return
+    
+    state = context.user_data['state']
+    text = update.message.text.strip().lower()
+    
+    if state == 'update_field':
+        # Handle field selection
+        if text == 'cancel':
+            context.user_data.clear()
+            await update.message.reply_text("❌ Order update cancelled.")
+            return
+        
+        valid_fields = ['customer', 'topic', 'deadline']
+        if text not in valid_fields:
+            await update.message.reply_text(
+                f"❌ Invalid field '{text}'. Please choose:\n"
+                f"• `customer` - Customer name\n"
+                f"• `topic` - Topic/description\n"
+                f"• `deadline` - Deadline (YYYY-MM-DD HH:MM)\n"
+                f"• `cancel` - Cancel update"
+            )
+            return
+        
+        # Store field and ask for value
+        context.user_data['update_field'] = text
+        context.user_data['state'] = 'update_value'
+        
+        field_prompts = {
+            'customer': "Enter the new customer name:",
+            'topic': "Enter the new topic/description:",
+            'deadline': "Enter the new deadline (YYYY-MM-DD HH:MM):"
+        }
+        
+        await update.message.reply_text(f"📝 {field_prompts[text]}")
+    
+    elif state == 'update_value':
+        # Handle value input and perform update
+        field = context.user_data.get('update_field')
+        order_id = context.user_data.get('updating_order_id')
+        
+        if not field or not order_id:
+            context.user_data.clear()
+            await update.message.reply_text("❌ Update session corrupted. Please start over.")
+            return
+        
+        # Validate input based on field
+        value = update.message.text.strip()
+        if field == 'deadline':
+            try:
+                # Parse and validate deadline format
+                dt = datetime.strptime(value, '%Y-%m-%d %H:%M')
+                # Convert to ISO format for API
+                value = dt.isoformat()
+            except ValueError:
+                await update.message.reply_text(
+                    "❌ Invalid deadline format. Please use YYYY-MM-DD HH:MM format.\n"
+                    "Example: 2024-12-25 14:30"
+                )
+                return
+        
+        # Prepare update data
+        update_data = {}
+        if field == 'deadline':
+            update_data['deadline_at'] = value
+        elif field == 'customer':
+            update_data['customer_name'] = value
+        else:
+            update_data[field] = value
+        
+        # Call API to update
+        try:
+            response = requests.put(f"{API_URL}/api/orders/{order_id}", json=update_data)
+            if response.status_code == 404:
+                context.user_data.clear()
+                await update.message.reply_text(f"❌ Order {order_id} not found.")
+                return
+            response.raise_for_status()
+            
+            order = response.json()
+            deadline = datetime.fromisoformat(order['deadline_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M')
+            
+            context.user_data.clear()
+            await update.message.reply_text(
+                f"✅ Order {order_id} updated successfully!\n"
+                f"• Client: {order['customer_name']}\n"
+                f"• Topic: {order['topic']}\n"
+                f"• Deadline: {deadline}"
+            )
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error updating order {order_id}: {e}")
+            context.user_data.clear()
+            await update.message.reply_text(f"❌ Error updating order {order_id}.")
+        except Exception as e:
+            logger.error(f"Unexpected error updating order {order_id}: {e}")
+            context.user_data.clear()
+            await update.message.reply_text(f"❌ Unexpected error updating order {order_id}.")
+
 # Diagnostic handler for all updates
 async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -189,6 +343,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/delivered - List all delivered orders\n"
         "/delivered_client <name> - List delivered orders for specific client\n"
         "/deliver <order_id> - Mark specific order as delivered\n"
+        "/update_order <order_id> - Update order details (interactive)\n"
         "/neworder - Create a new order (interactive)\n\n"
         "**How to use:**\n"
         "1. Create orders via web UI or /neworder\n"
@@ -346,6 +501,7 @@ def main():
     application.add_handler(CommandHandler("delivered", delivered), group=1)
     application.add_handler(CommandHandler("delivered_client", delivered_client), group=1)
     application.add_handler(CommandHandler("deliver", deliver), group=1)
+    application.add_handler(CommandHandler("update_order", update_order_start), group=1)
     application.add_handler(CommandHandler("neworder", neworder_start), group=1)
     application.add_handler(CommandHandler("cancel", neworder_cancel), group=1)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text), group=1)

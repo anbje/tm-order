@@ -241,6 +241,30 @@ def deliver_order(order_id: int, db: Session = Depends(get_db), request: Request
     return order
 
 
+@app.put("/api/orders/{order_id}", response_model=OrderResponse)
+def update_order(order_id: int, order_update: OrderUpdate, db: Session = Depends(get_db), request: Request = None):
+    """Update an existing order"""
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Update only provided fields
+    update_data = order_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(order, field, value)
+    
+    order.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(order)
+    
+    try:
+        client_addr = request.client.host if request and request.client else 'unknown'
+    except Exception:
+        client_addr = 'unknown'
+    logging.info(f"update_order: order_id={order_id}, updated_fields={list(update_data.keys())}, remote={client_addr}")
+    return order
+
+
 # @app.get("/api/debug/orders_count")
 # def debug_orders_count(db: Session = Depends(get_db)):
 #     """Debug endpoint: return total orders and last created timestamp to help diagnose proxy issues."""
