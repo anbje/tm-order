@@ -167,7 +167,6 @@ sudo reboot                         # safe reboot (systemd auto-starts stack)
 ```
 // .vscode/copilot-instructions.md
 // Paste the lines below into GitHub Copilot chat when you need context
---------------------------------------------------------------------------
 Project: tm-order (Telegram mini-app workflow bot)
 Production VM: tm-order-bot @ us-central1-a  (external IP static, free tier)
 Deploy command (VM):  docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build
@@ -177,3 +176,15 @@ Database volume:      postgres_data  (docker volume, lives only on VM)
 HTTPS cert:           auto by Caddy, no action needed
 --------------------------------------------------------------------------
 ``
+
+---
+
+#  11.  GIT LARGE FILE INCIDENT & PRODUCTION PIPELINE LESSONS (2025-10-17)
+| Issue | Resolution | Key Lessons |
+|---|---|---|
+| Accidental commit of large binaries (Google Cloud SDK, >100MB) caused git push failures and repo bloat | Used BFG Repo-Cleaner to purge all large files from git history, updated .gitignore, and force-pushed to GitHub | Never commit SDKs or binaries; always check repo size before pushing; .gitignore must include all non-source assets |
+| Production deployment failed to update web UI after code changes | Ensured VM pulled latest code, rebuilt Docker containers with --no-cache, and restarted services | Always verify commit hash on VM matches local; use --no-cache for Docker builds to avoid stale assets |
+| Caddy/SSL issues (ERR_SSL_PROTOCOL_ERROR) after redeploy | Checked Caddy logs, confirmed certificate issuance, verified ports 80/443 open, cleared browser cache | Caddy logs are authoritative for SSL issues; browser cache and DNS can mask real status |
+| Docker Compose errors (ContainerConfig) after image cleanup | Ran docker-compose down --volumes, pruned system, rebuilt all images | Full cleanup and rebuild may be required after major image or volume changes |
+
+> Documented by Copilot: This section summarizes a critical production recovery, git hygiene, and deployment troubleshooting workflow. Review before future major upgrades or if similar symptoms recur.
