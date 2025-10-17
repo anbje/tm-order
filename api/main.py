@@ -192,6 +192,32 @@ def list_undelivered_orders_by_client(client_name: str, db: Session = Depends(ge
     return results
 
 
+@app.get("/api/orders/delivered", response_model=list[OrderResponse])
+def list_delivered_orders(db: Session = Depends(get_db), request: Request = None):
+    """List all delivered orders with delivery timestamps"""
+    query = db.query(Order).filter(Order.status == "delivered").order_by(Order.updated_at.desc())
+    results = query.all()
+    try:
+        client_addr = request.client.host if request and request.client else 'unknown'
+    except Exception:
+        client_addr = 'unknown'
+    logging.info(f"list_delivered_orders: returned {len(results)} rows; remote={client_addr}")
+    return results
+
+
+@app.get("/api/orders/delivered/{client_name}", response_model=list[OrderResponse])
+def list_delivered_orders_by_client(client_name: str, db: Session = Depends(get_db), request: Request = None):
+    """List delivered orders for a specific client"""
+    query = db.query(Order).filter(Order.status == "delivered", Order.customer_name == client_name).order_by(Order.updated_at.desc())
+    results = query.all()
+    try:
+        client_addr = request.client.host if request and request.client else 'unknown'
+    except Exception:
+        client_addr = 'unknown'
+    logging.info(f"list_delivered_orders_by_client: client={client_name}, returned {len(results)} rows; remote={client_addr}")
+    return results
+
+
 # @app.get("/api/debug/orders_count")
 # def debug_orders_count(db: Session = Depends(get_db)):
 #     """Debug endpoint: return total orders and last created timestamp to help diagnose proxy issues."""
