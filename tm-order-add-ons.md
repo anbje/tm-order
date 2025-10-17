@@ -33,9 +33,10 @@
 
 ### Phase 2: Order Update & Edit
 
-**2.1. Update Order Data**
+**2.1. Update Order Data ✅ COMPLETED**
 - Telegram: `/update_order <order_id>` triggers interactive update (order nr, deadline, etc.), with validation.
 - Web UI: Add "Edit" action for both delivered and undelivered orders.
+- **Implementation**: Added `PUT /api/orders/{order_id}` endpoint, `/update_order <order_id>` bot command, and Web UI edit modal with form validation and confirmation dialogs.
 
 ---
 
