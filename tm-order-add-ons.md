@@ -24,9 +24,10 @@
 - Web UI: Add client filter to delivered orders view.
 - **Implementation**: Added `/api/orders/delivered/{client_name}` endpoint and `/delivered_client <name>` bot command.
 
-**1.5. Deliver Order**
-- Telegram: `/deliver` command lists all undelivered orders, allows selection, marks as delivered.
+**1.5. Deliver Order ✅ COMPLETED**
+- Telegram: `/deliver <order_id>` command marks specific order as delivered.
 - Web UI: Add "Mark as Delivered" action in undelivered orders view.
+- **Implementation**: Added `PUT /api/orders/{order_id}/deliver` endpoint and `/deliver <order_id>` bot command.
 
 ---
 
