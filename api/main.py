@@ -218,6 +218,29 @@ def list_delivered_orders_by_client(client_name: str, db: Session = Depends(get_
     return results
 
 
+@app.put("/api/orders/{order_id}/deliver", response_model=OrderResponse)
+def deliver_order(order_id: int, db: Session = Depends(get_db), request: Request = None):
+    """Mark an order as delivered"""
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    if order.status == "delivered":
+        raise HTTPException(status_code=400, detail="Order is already delivered")
+    
+    order.status = "delivered"
+    order.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(order)
+    
+    try:
+        client_addr = request.client.host if request and request.client else 'unknown'
+    except Exception:
+        client_addr = 'unknown'
+    logging.info(f"deliver_order: order_id={order_id}, customer={order.customer_name}, remote={client_addr}")
+    return order
+
+
 # @app.get("/api/debug/orders_count")
 # def debug_orders_count(db: Session = Depends(get_db)):
 #     """Debug endpoint: return total orders and last created timestamp to help diagnose proxy issues."""

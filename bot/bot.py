@@ -135,6 +135,36 @@ async def delivered_client(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error fetching delivered orders for client {client_name}: {e}")
         await update.message.reply_text(f"❌ Error fetching delivered orders for client '{client_name}'.")
 
+
+async def deliver(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Mark an order as delivered by ID"""
+    if not context.args:
+        await update.message.reply_text("❌ Usage: /deliver <order_id>")
+        return
+    
+    try:
+        order_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("❌ Invalid order ID. Please provide a number.")
+        return
+    
+    try:
+        response = requests.put(f"{API_URL}/api/orders/{order_id}/deliver")
+        if response.status_code == 404:
+            await update.message.reply_text(f"❌ Order {order_id} not found.")
+            return
+        elif response.status_code == 400:
+            await update.message.reply_text(f"❌ Order {order_id} is already delivered.")
+            return
+        response.raise_for_status()
+        
+        order = response.json()
+        deadline = datetime.fromisoformat(order['deadline_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M')
+        await update.message.reply_text(f"✅ Order {order_id} marked as delivered!\n• Client: {order['customer_name']}\n• Topic: {order['topic']}\n• Deadline: {deadline}")
+    except Exception as e:
+        logger.error(f"Error delivering order {order_id}: {e}")
+        await update.message.reply_text(f"❌ Error delivering order {order_id}.")
+
 # Diagnostic handler for all updates
 async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -158,6 +188,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/undelivered_client <name> - List undelivered orders for specific client\n"
         "/delivered - List all delivered orders\n"
         "/delivered_client <name> - List delivered orders for specific client\n"
+        "/deliver <order_id> - Mark specific order as delivered\n"
         "/neworder - Create a new order (interactive)\n\n"
         "**How to use:**\n"
         "1. Create orders via web UI or /neworder\n"
@@ -314,6 +345,7 @@ def main():
     application.add_handler(CommandHandler("undelivered_client", undelivered_client), group=1)
     application.add_handler(CommandHandler("delivered", delivered), group=1)
     application.add_handler(CommandHandler("delivered_client", delivered_client), group=1)
+    application.add_handler(CommandHandler("deliver", deliver), group=1)
     application.add_handler(CommandHandler("neworder", neworder_start), group=1)
     application.add_handler(CommandHandler("cancel", neworder_cancel), group=1)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text), group=1)
