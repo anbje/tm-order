@@ -69,10 +69,42 @@
     <div class="container">
         <h1>📋 TM-Order - Translation Management</h1>
         <button class="btn" onclick="window.location.reload()">🔄 Refresh</button>
+        <form id="order-form" style="margin-bottom:24px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+            <input type="text" id="customer_name" placeholder="Customer" required style="flex:1;min-width:120px;">
+            <input type="text" id="topic" placeholder="Topic" style="flex:1;min-width:120px;">
+            <input type="datetime-local" id="deadline_at" required style="min-width:180px;">
+            <input type="text" id="source_lang" placeholder="Source Lang" required style="width:80px;">
+            <input type="text" id="target_lang" placeholder="Target Lang" required style="width:80px;">
+            <input type="number" id="word_count" placeholder="Words" min="0" style="width:80px;">
+            <button type="submit" class="btn">➕ Add Order</button>
+        </form>
         <div id="orders-list" class="loading">Loading orders...</div>
     </div>
 
     <script>
+        document.getElementById('order-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const data = {
+                customer_name: document.getElementById('customer_name').value,
+                topic: document.getElementById('topic').value,
+                deadline_at: document.getElementById('deadline_at').value,
+                source_lang: document.getElementById('source_lang').value,
+                target_lang: document.getElementById('target_lang').value,
+                word_count: parseInt(document.getElementById('word_count').value) || 0
+            };
+            try {
+                const resp = await fetch(`${API_URL}/api/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!resp.ok) throw new Error('Failed to create order');
+                document.getElementById('order-form').reset();
+                loadOrders();
+            } catch (err) {
+                alert('Error creating order: ' + err);
+            }
+        });
         const API_URL = window.location.origin;
 
         async function loadOrders() {
@@ -88,6 +120,7 @@
         }
 
         function displayOrders(orders) {
+            console.log('Orders received:', orders);
             if (orders.length === 0) {
                 document.getElementById('orders-list').innerHTML = 
                     '<p>No orders yet. Create your first order via Telegram!</p>';
@@ -130,7 +163,10 @@
                 </table>
             `;
             
-            document.getElementById('orders-list').innerHTML = html;
+            console.log('Generated HTML:', html);
+            const element = document.getElementById('orders-list');
+            console.log('Element found:', element);
+            element.innerHTML = html;
         }
 
         // Load orders on page load

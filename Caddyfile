@@ -1,4 +1,7 @@
 tmorder.duckdns.org {
-    reverse_proxy /api* api:8000
-    reverse_proxy web:80
+    @api path /api*
+    reverse_proxy @api api:8000
+
+    @not_api not path /api*
+    reverse_proxy @not_api web:80
 }

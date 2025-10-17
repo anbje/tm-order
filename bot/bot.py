@@ -34,8 +34,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Welcome to TM-Order! 📋\n\n"
         "Your translation management system is running.\n\n"
-        "🌐 Web UI: https://localhost\n"
-        "📅 Calendar: https://localhost/calendar/ics?token=rama_tm_secret_2025\n\n"
+        "🌐 Web UI: https://tmorder.duckdns.org\n"
+        "📅 Calendar: https://tmorder.duckdns.org/calendar/ics?token=rama_tm_secret_2025\n\n"
         "Available commands:\n"
         "/start - Show this message\n"
         "/done - Mark order as delivered\n"

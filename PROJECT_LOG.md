@@ -1,3 +1,13 @@
+#  11.  VM USER STANDARDIZATION (MANDATORY)
+| Step | Command |
+|---|---|
+| Remove unused user dirs | `sudo bash /home/anton_bjerke/standardize_vm.sh` |
+| Ensure all files owned by main user | Script sets ownership to `anton_bjerke` |
+| All SSH, git, Docker, and file ops | Use only `anton_bjerke` user |
+| Project location | `/home/anton_bjerke/tm_order` |
+
+> The script `/home/anton_bjerke/standardize_vm.sh` automates cleanup and ownership. Run after any user confusion or migration.
+
 ```<!--  TM-ORDER  –  PRODUCTION-HANDOVER GUIDE  -->
 <!--  Save as PROJECT_LOG.md in the root of your VS-Code workspace -->
 <!--  Purpose: let GitHub Copilot / future-you know what is **LIVE**, what is **LOCAL**, and what must **NEVER** be touched.  -->
