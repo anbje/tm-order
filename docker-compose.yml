@@ -36,8 +36,8 @@ services:
         networks:
           - tmorder
         volumes:
-          - ./config:/app/config:ro
-          - ./config:/config:ro
+          - /home/anton_bjerke/tm_order/config:/app/config:ro
+          - /home/anton_bjerke/tm_order/config:/config:ro
         healthcheck:
           test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
           interval: 30s
@@ -59,8 +59,8 @@ services:
         networks:
           - tmorder
         volumes:
-          - ./config:/app/config:ro
-          - ./config:/config:ro
+          - /home/anton_bjerke/tm_order/config:/app/config:ro
+          - /home/anton_bjerke/tm_order/config:/config:ro
 
       web:
         build:
