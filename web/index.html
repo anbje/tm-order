@@ -174,32 +174,25 @@
                 alert('Error creating order: ' + err);
             }
         });
-        // Primary API endpoint for production
-        // Use the public domain (Caddy handles TLS) so the web UI points to the live API
-        const API_URL = 'https://tmorder.duckdns.org';
+        // Primary API endpoint for production (Caddy provides TLS)
+        // Default to the public domain. This variable is mutable so we can override it
+        // at runtime when serving the web UI locally for development/testing.
+        let API_URL = 'https://tmorder.duckdns.org';
 
-        // For local development the page will still work if served from the API host
-        // (e.g., when testing locally set window.location.origin to http://localhost:8001)
-        // Keep a runtime fallback to the current origin so relative installs still work.
-        if (window && window.location && window.location.hostname && window.location.hostname !== 'tmorder.duckdns.org') {
-            // If we're running locally (not on the production domain), prefer the local API
-            // This allows developers to test without changing the file repeatedly.
-            const localFallback = window.location.origin;
-            // Use local fallback only if it includes a port (heuristic for dev servers)
-            if (localFallback.indexOf(':') !== -1 && localFallback.indexOf('http://') === 0) {
-                // assume local dev server (e.g., http://localhost:8001)
-                // set API_URL to localFallback for development convenience
-                // (do not overwrite in production)
-                // Note: keep API_URL without trailing /api to match existing fetch calls that append /api/...
-                // e.g., fetch(`${API_URL}/api/settings`)
-                // eslint-disable-next-line no-console
-                console.info('Using local API fallback:', localFallback);
-                // Only override when running on localhost
-                if (localFallback.indexOf('localhost') !== -1 || localFallback.indexOf('127.0.0.1') !== -1) {
-                    // assign fallback
-                    window.API_URL_OVERRIDE = localFallback;
+        // For local development prefer a local origin (e.g. http://localhost:8001).
+        // If the page is served from localhost, use that origin as API URL so fetch calls
+        // work without touching this file repeatedly.
+        try {
+            const hostname = window.location && window.location.hostname;
+            const origin = window.location && window.location.origin;
+            if (hostname && (hostname === 'localhost' || hostname === '127.0.0.1')) {
+                if (origin) {
+                    console.info('Detected local dev host, using local API origin:', origin);
+                    API_URL = origin; // override for local testing
                 }
             }
+        } catch (e) {
+            // ignore in non-browser environments
         }
 
         // Load settings on page load
