@@ -36,12 +36,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Your translation management system is running.\n\n"
         "🌐 Web UI: https://tmorder.duckdns.org\n"
         "📅 Calendar: https://tmorder.duckdns.org/calendar/ics?token=rama_tm_secret_2025\n\n"
-        "Available commands:\n"
+        "**Available Commands:**\n"
         "/start - Show this message\n"
+        "/help - Show detailed help\n"
         "/done - Mark order as delivered\n"
-        "/help - Show help\n"
-        "/neworder - Create a new order (interactive)\n\n"
-        "💡 Use the web interface or /neworder to create and manage orders."
+        "/undelivered - List all undelivered orders\n"
+        "/undelivered_client <name> - List undelivered orders for specific client\n"
+        "/delivered - List all delivered orders\n"
+        "/delivered_client <name> - List delivered orders for specific client\n"
+        "/deliver <order_id> - Mark specific order as delivered\n"
+        "/update_order <order_id> - Update order details (interactive)\n"
+        "/neworder - Create a new order (interactive)\n"
+        "/cancel - Cancel current operation\n\n"
+        "💡 Use the web interface for full order management."
     )
 
 async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -217,7 +224,7 @@ async def update_order_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     context.user_data['state'] = 'update_field'
 
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_update_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle text messages for conversation states"""
     if not context.user_data or 'state' not in context.user_data:
         # No active conversation, ignore
@@ -317,8 +324,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             logger.error(f"Unexpected error updating order {order_id}: {e}")
             context.user_data.clear()
-            await update.message.reply_text(f"❌ Unexpected error updating order {order_id}.")
-
 # Diagnostic handler for all updates
 async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -446,9 +451,13 @@ async def neworder_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Order creation cancelled.")
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle text messages for all conversation states"""
     if context.user_data is None:
         context.user_data = {}
+    
     state = context.user_data.get('state')
+    
+    # Handle neworder conversation
     if state == 'customer':
         await neworder_customer(update, context)
     elif state == 'topic':
@@ -461,6 +470,43 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await neworder_tgt_lang(update, context)
     elif state == 'words':
         await neworder_words(update, context)
+    
+    # Handle update_order conversation
+    elif state == 'update_field':
+        text = update.message.text.strip().lower()
+        if text == 'cancel':
+            context.user_data.clear()
+            await update.message.reply_text("❌ Order update cancelled.")
+            return
+        # Handle field selection for update
+        valid_fields = ['customer_name', 'topic', 'deadline_at', 'src_lang', 'tgt_lang', 'words']
+        if text in valid_fields:
+            context.user_data['update_field'] = text
+            context.user_data['state'] = 'update_value'
+            await update.message.reply_text(f"Enter new value for `{text}`:")
+        else:
+            await update.message.reply_text(f"Invalid field. Valid fields: {', '.join(valid_fields)}")
+    
+    elif state == 'update_value':
+        # Handle value input for update
+        order_id = context.user_data.get('update_order_id')
+        field = context.user_data.get('update_field')
+        if not order_id or not field:
+            context.user_data.clear()
+            await update.message.reply_text("❌ Update session corrupted. Please start over.")
+            return
+        
+        try:
+            # Update the order via API
+            update_data = {field: update.message.text}
+            response = requests.put(f"{API_URL}/api/orders/{order_id}", json=update_data)
+            response.raise_for_status()
+            
+            context.user_data.clear()
+            await update.message.reply_text(f"✅ Order {order_id} updated successfully!")
+        except Exception as e:
+            logger.error(f"Error updating order: {e}")
+            await update.message.reply_text("❌ Error updating order. Please try again.")
 
 def check_reminders():
     """Background job to check for upcoming deadlines and send reminders"""
@@ -498,18 +544,30 @@ def main():
     application = Application.builder().token(TOKEN).build()
     
     # Add handlers
+    logger.info("Registering bot command handlers...")
     application.add_handler(MessageHandler(filters.ALL, log_all_updates))
     application.add_handler(CommandHandler("start", start), group=1)
+    logger.info("Registered /start command")
     application.add_handler(CommandHandler("help", help_command), group=1)
+    logger.info("Registered /help command")
     application.add_handler(CommandHandler("done", done), group=1)
+    logger.info("Registered /done command")
     application.add_handler(CommandHandler("undelivered", undelivered), group=1)
+    logger.info("Registered /undelivered command")
     application.add_handler(CommandHandler("undelivered_client", undelivered_client), group=1)
+    logger.info("Registered /undelivered_client command")
     application.add_handler(CommandHandler("delivered", delivered), group=1)
+    logger.info("Registered /delivered command")
     application.add_handler(CommandHandler("delivered_client", delivered_client), group=1)
+    logger.info("Registered /delivered_client command")
     application.add_handler(CommandHandler("deliver", deliver), group=1)
+    logger.info("Registered /deliver command")
     application.add_handler(CommandHandler("update_order", update_order_start), group=1)
+    logger.info("Registered /update_order command")
     application.add_handler(CommandHandler("neworder", neworder_start), group=1)
+    logger.info("Registered /neworder command")
     application.add_handler(CommandHandler("cancel", neworder_cancel), group=1)
+    logger.info("Registered /cancel command")
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text), group=1)
     # Fallback for unknown commands (after ConversationHandler)
     async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -525,7 +583,7 @@ def main():
     scheduler_thread = Thread(target=run_scheduler, daemon=True)
     scheduler_thread.start()
     
-    logger.info("Bot started")
+    logger.info("Bot started successfully with all addon commands registered")
     
     # Run bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)

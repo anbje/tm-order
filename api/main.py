@@ -149,6 +149,87 @@ def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     print(f"Order created with ID: {db_order.id}")
     return db_order
 
+@app.get("/api/orders/check-reminders")
+def check_reminders(db: Session = Depends(get_db)):
+    """Check for orders needing deadline reminders at different intervals"""
+    now = datetime.utcnow()
+    
+    reminders = []
+    
+    # Check for 24h reminders
+    reminder_24h_window_start = now + timedelta(hours=23, minutes=45)  # 24h ±15min
+    reminder_24h_window_end = now + timedelta(hours=24, minutes=15)
+    orders_24h = db.query(Order).filter(
+        Order.deadline_at.between(reminder_24h_window_start, reminder_24h_window_end),
+        Order.reminder_sent_24h == False,
+        Order.status != "delivered",
+        Order.status != "cancelled"
+    ).all()
+    for order in orders_24h:
+        reminders.append({
+            "id": order.id,
+            "customer_name": order.customer_name,
+            "deadline_at": order.deadline_at,
+            "reminder_type": "24h",
+            "message": f"⏰ **24 Hours Reminder**\nOrder #{order.id} for {order.customer_name}\nTopic: {order.topic or 'N/A'}\nDeadline: {order.deadline_at.strftime('%Y-%m-%d %H:%M UTC')}"
+        })
+    
+    # Check for 6h reminders
+    reminder_6h_window_start = now + timedelta(hours=5, minutes=45)  # 6h ±15min
+    reminder_6h_window_end = now + timedelta(hours=6, minutes=15)
+    orders_6h = db.query(Order).filter(
+        Order.deadline_at.between(reminder_6h_window_start, reminder_6h_window_end),
+        Order.reminder_sent_6h == False,
+        Order.status != "delivered",
+        Order.status != "cancelled"
+    ).all()
+    for order in orders_6h:
+        reminders.append({
+            "id": order.id,
+            "customer_name": order.customer_name,
+            "deadline_at": order.deadline_at,
+            "reminder_type": "6h",
+            "message": f"🚨 **6 Hours Reminder**\nOrder #{order.id} for {order.customer_name}\nTopic: {order.topic or 'N/A'}\nDeadline: {order.deadline_at.strftime('%Y-%m-%d %H:%M UTC')}"
+        })
+    
+    # Check for 2h reminders
+    reminder_2h_window_start = now + timedelta(hours=1, minutes=45)  # 2h ±15min
+    reminder_2h_window_end = now + timedelta(hours=2, minutes=15)
+    orders_2h = db.query(Order).filter(
+        Order.deadline_at.between(reminder_2h_window_start, reminder_2h_window_end),
+        Order.reminder_sent_2h == False,
+        Order.status != "delivered",
+        Order.status != "cancelled"
+    ).all()
+    for order in orders_2h:
+        reminders.append({
+            "id": order.id,
+            "customer_name": order.customer_name,
+            "deadline_at": order.deadline_at,
+            "reminder_type": "2h",
+            "message": f"⚠️ **2 Hours Reminder**\nOrder #{order.id} for {order.customer_name}\nTopic: {order.topic or 'N/A'}\nDeadline: {order.deadline_at.strftime('%Y-%m-%d %H:%M UTC')}"
+        })
+    
+    # Check for due reminders (at deadline)
+    reminder_due_window_start = now - timedelta(minutes=15)  # Within 15min of deadline
+    reminder_due_window_end = now + timedelta(minutes=15)
+    orders_due = db.query(Order).filter(
+        Order.deadline_at.between(reminder_due_window_start, reminder_due_window_end),
+        Order.reminder_sent_due == False,
+        Order.status != "delivered",
+        Order.status != "cancelled"
+    ).all()
+    for order in orders_due:
+        reminders.append({
+            "id": order.id,
+            "customer_name": order.customer_name,
+            "deadline_at": order.deadline_at,
+            "reminder_type": "due",
+            "message": f"🚨 **DEADLINE REACHED**\nOrder #{order.id} for {order.customer_name}\nTopic: {order.topic or 'N/A'}\nDeadline: {order.deadline_at.strftime('%Y-%m-%d %H:%M UTC')}"
+        })
+    
+    return reminders
+
 @app.get("/api/orders", response_model=list[OrderResponse])
 def list_orders(
     status: str | None = None,
@@ -381,87 +462,6 @@ async def telegram_webhook(update: dict):
     """Telegram webhook endpoint - placeholder for bot integration"""
     # Bot service will handle actual logic
     return {"status": "received"}
-
-@app.get("/api/orders/check-reminders")
-def check_reminders(db: Session = Depends(get_db)):
-    """Check for orders needing deadline reminders at different intervals"""
-    now = datetime.utcnow()
-    
-    reminders = []
-    
-    # Check for 24h reminders
-    reminder_24h_window_start = now + timedelta(hours=23, minutes=45)  # 24h ±15min
-    reminder_24h_window_end = now + timedelta(hours=24, minutes=15)
-    orders_24h = db.query(Order).filter(
-        Order.deadline_at.between(reminder_24h_window_start, reminder_24h_window_end),
-        Order.reminder_sent_24h == False,
-        Order.status != "delivered",
-        Order.status != "cancelled"
-    ).all()
-    for order in orders_24h:
-        reminders.append({
-            "id": order.id,
-            "customer_name": order.customer_name,
-            "deadline_at": order.deadline_at,
-            "reminder_type": "24h",
-            "message": f"⏰ **24 Hours Reminder**\nOrder #{order.id} for {order.customer_name}\nTopic: {order.topic or 'N/A'}\nDeadline: {order.deadline_at.strftime('%Y-%m-%d %H:%M UTC')}"
-        })
-    
-    # Check for 6h reminders
-    reminder_6h_window_start = now + timedelta(hours=5, minutes=45)  # 6h ±15min
-    reminder_6h_window_end = now + timedelta(hours=6, minutes=15)
-    orders_6h = db.query(Order).filter(
-        Order.deadline_at.between(reminder_6h_window_start, reminder_6h_window_end),
-        Order.reminder_sent_6h == False,
-        Order.status != "delivered",
-        Order.status != "cancelled"
-    ).all()
-    for order in orders_6h:
-        reminders.append({
-            "id": order.id,
-            "customer_name": order.customer_name,
-            "deadline_at": order.deadline_at,
-            "reminder_type": "6h",
-            "message": f"🚨 **6 Hours Reminder**\nOrder #{order.id} for {order.customer_name}\nTopic: {order.topic or 'N/A'}\nDeadline: {order.deadline_at.strftime('%Y-%m-%d %H:%M UTC')}"
-        })
-    
-    # Check for 2h reminders
-    reminder_2h_window_start = now + timedelta(hours=1, minutes=45)  # 2h ±15min
-    reminder_2h_window_end = now + timedelta(hours=2, minutes=15)
-    orders_2h = db.query(Order).filter(
-        Order.deadline_at.between(reminder_2h_window_start, reminder_2h_window_end),
-        Order.reminder_sent_2h == False,
-        Order.status != "delivered",
-        Order.status != "cancelled"
-    ).all()
-    for order in orders_2h:
-        reminders.append({
-            "id": order.id,
-            "customer_name": order.customer_name,
-            "deadline_at": order.deadline_at,
-            "reminder_type": "2h",
-            "message": f"⚠️ **2 Hours Reminder**\nOrder #{order.id} for {order.customer_name}\nTopic: {order.topic or 'N/A'}\nDeadline: {order.deadline_at.strftime('%Y-%m-%d %H:%M UTC')}"
-        })
-    
-    # Check for due reminders (at deadline)
-    reminder_due_window_start = now - timedelta(minutes=15)  # Within 15min of deadline
-    reminder_due_window_end = now + timedelta(minutes=15)
-    orders_due = db.query(Order).filter(
-        Order.deadline_at.between(reminder_due_window_start, reminder_due_window_end),
-        Order.reminder_sent_due == False,
-        Order.status != "delivered",
-        Order.status != "cancelled"
-    ).all()
-    for order in orders_due:
-        reminders.append({
-            "id": order.id,
-            "customer_name": order.customer_name,
-            "deadline_at": order.deadline_at,
-            "reminder_type": "due",
-            "message": f"🚨 **DEADLINE REACHED**\nOrder #{order.id} for {order.customer_name}\nTopic: {order.topic or 'N/A'}\nDeadline: {order.deadline_at.strftime('%Y-%m-%d %H:%M UTC')}"
-        })
-    
-    return reminders
 
 @app.post("/api/orders/{order_id}/mark-reminder-sent")
 def mark_reminder_sent(order_id: int, reminder_type: str = "24h", db: Session = Depends(get_db)):
