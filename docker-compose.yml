@@ -45,7 +45,10 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
       DATABASE_URL: ${DATABASE_URL}
-      API_URL: http://api:8000
+      # INTERNAL_API_URL is used for container-to-container communication
+      INTERNAL_API_URL: http://api:8000
+      # EXTERNAL_API_URL is the public API URL routed via Caddy (useful for webhooks or callbacks)
+      EXTERNAL_API_URL: https://tmorder.duckdns.org
     depends_on:
       api:
         condition: service_healthy
@@ -58,6 +61,9 @@ services:
       dockerfile: Dockerfile
     networks:
       - tmorder
+    environment:
+      # Web UI should call the public API domain (Caddy will route requests)
+      REACT_APP_API_URL: https://tmorder.duckdns.org
 
   caddy:
     image: caddy:2-alpine

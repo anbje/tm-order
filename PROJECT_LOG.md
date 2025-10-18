@@ -197,3 +197,32 @@ HTTPS cert:           auto by Caddy, no action needed
 > Documented by Copilot: This section records the resolution of a critical Telegram bot integration issue, including token mismatch, duplicate instance conflict, and end-to-end order flow validation. Review if bot orders ever fail to appear in the web UI.
 
 > Documented by Copilot: This section summarizes a critical production recovery, git hygiene, and deployment troubleshooting workflow. Review before future major upgrades or if similar symptoms recur.
+
+## 13.  PRODUCTION DOMAIN MISMATCH: LOCALHOST VS tmorder.duckdns.org (2025-10-18)
+
+Problem:
+- During development some web and bot configuration pointed to `localhost` (or internal container hostnames) while production is served at `https://tmorder.duckdns.org` via Caddy. This caused the web UI to load a local-dev API URL while the live API and bot used the production domain, resulting in inconsistent behavior and missing settings in the public UI.
+
+Resolution:
+- Updated `web/index.html` to prefer `https://tmorder.duckdns.org` for production and fall back to a local origin only when running on `localhost` for development.
+- Updated `docker-compose.yml` to expose `INTERNAL_API_URL` for container-to-container use and `EXTERNAL_API_URL` for public callbacks; set `REACT_APP_API_URL` for the web service to the production domain.
+- Added `external_domain` to `config/settings.yaml` so settings and bot messages can reference the canonical public URL.
+- Documented this incident and the fix here in `PROJECT_LOG.md`.
+
+Deployment notes:
+- Commit and push the changes, then SSH to VM and run the prod compose flow:
+
+```bash
+cd ~/tm_order
+git pull origin main
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Verification:
+- Visit `https://tmorder.duckdns.org` in a browser (Caddy provides TLS)
+- Check API at `https://tmorder.duckdns.org/api/settings`
+- Verify bot webhook points to `https://tmorder.duckdns.org/bot` (or appropriate path)
+
+If anything still points to localhost, run `grep -R --line-number "localhost" .` in the repo and update remaining references.
+

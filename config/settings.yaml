@@ -1,0 +1,120 @@
+# TM-Order Settings Configuration
+# This file contains user-customizable settings for the TM-Order system
+# Changes require restart of services to take effect
+
+# Deadline Reminder Settings
+deadline_reminders:
+  # Enable/disable reminder notifications
+  enabled: true
+
+  # Reminder intervals in hours before deadline
+  # Set to 0 to disable specific reminders
+  reminder_24h: 24    # Hours before deadline for 24h reminder
+  reminder_6h: 6      # Hours before deadline for 6h reminder
+  reminder_2h: 2      # Hours before deadline for 2h reminder
+
+  # Reminder message templates (supports {customer_name}, {topic}, {deadline})
+  messages:
+    reminder_24h: "⏰ **24 Hours Reminder**\nOrder #{order_id} for {customer_name}\nTopic: {topic}\nDeadline: {deadline}"
+    reminder_6h: "🚨 **6 Hours Reminder**\nOrder #{order_id} for {customer_name}\nTopic: {topic}\nDeadline: {deadline}"
+    reminder_2h: "⚠️ **2 Hours Reminder**\nOrder #{order_id} for {customer_name}\nTopic: {topic}\nDeadline: {deadline}"
+    reminder_due: "🚨 **DEADLINE REACHED**\nOrder #{order_id} for {customer_name}\nTopic: {topic}\nDeadline: {deadline}"
+
+# Bot Command Labels (for localization/customization)
+bot_labels:
+  # Welcome and help messages
+  welcome_message: "Welcome to TM-Order! 📋\n\nYour translation management system is running.\n\n🌐 Web UI: https://tmorder.duckdns.org\n📅 Calendar: https://tmorder.duckdns.org/calendar/ics?token=rama_tm_secret_2025\n\n**Available Commands:**\n"
+  help_message: "📖 **TM-Order Bot Help**\n\nYour translation management system supports the following commands:\n\n"
+
+  # Command descriptions
+  start_command: "/start - Show this message"
+  help_command: "/help - Show detailed help"
+  done_command: "/done - Mark order as delivered"
+  undelivered_command: "/undelivered - List all undelivered orders"
+  undelivered_client_command: "/undelivered_client <name> - List undelivered orders for specific client"
+  delivered_command: "/delivered - List all delivered orders"
+  delivered_client_command: "/delivered_client <name> - List delivered orders for specific client"
+  deliver_command: "/deliver <order_id> - Mark specific order as delivered"
+  update_order_command: "/update_order <order_id> - Update order details (interactive)"
+  settings_command: "/settings - Configure bot settings"
+  neworder_command: "/neworder - Create a new order (interactive)"
+  cancel_command: "/cancel - Cancel current operation"
+  web_interface_hint: "💡 Use the web interface for full order management."
+
+  # Detailed descriptions
+  start_description: "**/start** - Show welcome message and available commands"
+  help_description: "**/help** - Show this detailed help message"
+  done_description: "**/done** - Mark the most recent order as delivered"
+  undelivered_description: "**/undelivered** - List all undelivered orders with deadlines"
+  undelivered_client_description: "**/undelivered_client <name>** - List undelivered orders for specific client"
+  delivered_description: "**/delivered** - List all delivered orders"
+  delivered_client_description: "**/delivered_client <name>** - List delivered orders for specific client"
+  deliver_description: "**/deliver <order_id>** - Mark specific order as delivered"
+  update_order_description: "**/update_order <order_id>** - Update order details interactively"
+  settings_description: "**/settings** - Configure bot settings and preferences"
+  neworder_description: "**/neworder** - Create a new order interactively"
+  cancel_description: "**/cancel** - Cancel current operation"
+  web_interface_description: "\n🌐 **Web Interface**\nUse the web UI at https://tmorder.duckdns.org for full order management, calendar view, and advanced features."
+
+  # Settings interface labels
+  settings_title: "⚙️ **Settings**"
+  reminders_enabled: "✅ Enabled"
+  reminders_disabled: "❌ Disabled"
+  reminder_24h_label: "• 24h reminder:"
+  reminder_6h_label: "• 6h reminder:"
+  reminder_2h_label: "• 2h reminder:"
+  hours_before: "h before"
+  what_to_change: "**What would you like to change?**"
+  toggle_reminders: "• `reminders` - Toggle reminder notifications"
+  change_24h: "• `24h` - Change 24h reminder timing"
+  change_6h: "• `6h` - Change 6h reminder timing"
+  change_2h: "• `2h` - Change 2h reminder timing"
+  cancel_option: "• `cancel` - Cancel"
+  reply_with_choice: "Reply with your choice:"
+
+  # Settings conversation labels
+  enable_reminders_prompt: "Enable reminders? Reply with 'yes' or 'no':"
+  enter_value_prompt: "Enter new value for {text} reminder (hours before deadline):"
+  settings_cancelled: "❌ Settings cancelled."
+  invalid_option_msg: "❌ Invalid option. Choose: reminders, 24h, 6h, 2h or cancel"
+  session_corrupted_msg: "❌ Settings session corrupted. Please start over."
+  negative_value_msg: "❌ Value must be non-negative."
+  invalid_value_msg: "❌ Invalid value. Please enter a number."
+  settings_updated_msg: "✅ Settings updated successfully!"
+  error_updating_msg: "❌ Error updating settings. Please try again."
+
+  # Legacy labels (for backward compatibility)
+  start: "Welcome to TM-Order! 📋"
+  help: "📋 **TM-Order Help**"
+  undelivered: "📋 **Undelivered Orders:**"
+  delivered: "📋 **Delivered Orders:**"
+  settings: "⚙️ **Settings**"
+  confirm: "✅ Confirm"
+  cancel: "❌ Cancel"
+
+# Web UI Settings
+web_ui:
+  # Default timezone for displaying deadlines
+  default_timezone: "Europe/Stockholm"
+
+  # Date/time format preferences
+  date_format: "%Y-%m-%d"
+  time_format: "%H:%M"
+  datetime_format: "%Y-%m-%d %H:%M"
+
+  # Items per page in order listings
+  items_per_page: 25
+
+# External domain used in production. Keep in sync with Caddy / PROJECT_LOG.md
+external_domain: "https://tmorder.duckdns.org"
+
+# System Settings (admin only)
+system:
+  # Maximum orders to display in bot commands
+  max_orders_display: 50
+
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  log_level: "INFO"
+
+  # Enable audit logging for all changes
+  audit_logging: true
