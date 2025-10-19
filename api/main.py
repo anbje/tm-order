@@ -12,10 +12,25 @@ from icalendar import Calendar, Event
 import logging
 from pydantic import BaseModel
 import os
+import yaml
+from typing import Any
 
 # Database setup
-DATABASE_URL = "postgresql://tmorder:change_me_in_production@db:5432/tmorder"
-engine = create_engine(DATABASE_URL)
+# Prefer an explicit DATABASE_URL env var (production). When missing,
+# default to a local sqlite file so the app is developer-friendly and
+# doesn't require Docker to run.
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    # file-local sqlite DB by default for local development
+    f"sqlite:///{os.path.join(os.getcwd(), 'tmorder.db')}"
+)
+
+# Create a SQLAlchemy engine; sqlite needs a special connect arg
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -74,6 +89,65 @@ class OrderResponse(BaseModel):
 
 # FastAPI app
 app = FastAPI(title="TM-Order API")
+
+# Settings file path (prefer repo `config/settings.yaml`)
+DEFAULT_CONFIG_PATH = os.path.join(os.getcwd(), "config", "settings.yaml")
+
+
+def load_settings_from_disk(path: str | None = None) -> dict[str, Any]:
+    path = path or DEFAULT_CONFIG_PATH
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Settings file not found: {path}")
+    with open(path, "r", encoding="utf-8") as fh:
+        return yaml.safe_load(fh) or {}
+
+
+def save_settings_to_disk(settings: dict[str, Any], path: str | None = None) -> None:
+    path = path or DEFAULT_CONFIG_PATH
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    # write atomically
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        yaml.safe_dump(settings, fh, sort_keys=False, allow_unicode=True)
+    os.replace(tmp, path)
+
+
+@app.get("/api/settings")
+def get_settings():
+    """Return settings read from `config/settings.yaml` as JSON."""
+    try:
+        settings = load_settings_from_disk()
+        return settings
+    except FileNotFoundError:
+        # Let caller know the file is missing; this is intentional in dev setups
+        raise HTTPException(status_code=404, detail="Settings file not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class SettingsPatch(BaseModel):
+    # We accept a partial settings dict; user may send only a subset
+    # We'll coerce to a dict and merge with existing on save.
+    __root__: dict[str, Any]
+
+
+@app.put("/api/settings")
+def put_settings(patch: SettingsPatch):
+    """Merge the incoming dict into the existing settings and persist to disk."""
+    try:
+        cur = {}
+        try:
+            cur = load_settings_from_disk()
+        except FileNotFoundError:
+            cur = {}
+
+        # shallow merge: update top-level keys only (sufficient for current shape)
+        incoming = patch.__root__
+        cur.update(incoming)
+        save_settings_to_disk(cur)
+        return cur
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Do not wrap `app` here; we'll wrap it after routes are defined so decorators
