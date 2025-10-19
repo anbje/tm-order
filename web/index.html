@@ -199,24 +199,47 @@
         loadSettings();
 
         async function loadSettings() {
+            // sensible defaults if settings file is missing or API is unreachable
+            const defaults = {
+                deadline_reminders: { enabled: true, reminder_24h: 24, reminder_6h: 6, reminder_2h: 2 }
+            };
+
             try {
                 const response = await fetch(`${API_URL}/api/settings`);
+                if (!response.ok) {
+                    console.warn('Settings endpoint returned non-OK status:', response.status);
+                    // show a friendly status and use defaults
+                    document.getElementById('settings-status').textContent = 'Using default settings (no config)';
+                    document.getElementById('settings-status').style.color = '#e67e22';
+                    const reminders = defaults.deadline_reminders;
+                    document.getElementById('reminders_enabled').checked = reminders.enabled !== false;
+                    document.getElementById('reminder_24h').value = reminders.reminder_24h || 24;
+                    document.getElementById('reminder_6h').value = reminders.reminder_6h || 6;
+                    document.getElementById('reminder_2h').value = reminders.reminder_2h || 2;
+                    setTimeout(() => document.getElementById('settings-status').textContent = '', 4000);
+                    return;
+                }
+
                 const settings = await response.json();
-                
-                // Populate settings form
-                const reminders = settings.deadline_reminders || {};
+                // Populate settings form with values from disk
+                const reminders = settings.deadline_reminders || defaults.deadline_reminders;
                 document.getElementById('reminders_enabled').checked = reminders.enabled !== false;
                 document.getElementById('reminder_24h').value = reminders.reminder_24h || 24;
                 document.getElementById('reminder_6h').value = reminders.reminder_6h || 6;
                 document.getElementById('reminder_2h').value = reminders.reminder_2h || 2;
-                
+
                 document.getElementById('settings-status').textContent = 'Settings loaded successfully';
                 document.getElementById('settings-status').style.color = '#27ae60';
                 setTimeout(() => document.getElementById('settings-status').textContent = '', 3000);
             } catch (error) {
                 console.error('Error loading settings:', error);
-                document.getElementById('settings-status').textContent = 'Error loading settings';
+                document.getElementById('settings-status').textContent = 'Error loading settings (using defaults)';
                 document.getElementById('settings-status').style.color = '#e74c3c';
+                const reminders = defaults.deadline_reminders;
+                document.getElementById('reminders_enabled').checked = reminders.enabled !== false;
+                document.getElementById('reminder_24h').value = reminders.reminder_24h || 24;
+                document.getElementById('reminder_6h').value = reminders.reminder_6h || 6;
+                document.getElementById('reminder_2h').value = reminders.reminder_2h || 2;
             }
         }
 

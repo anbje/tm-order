@@ -125,15 +125,13 @@ def get_settings():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-class SettingsPatch(BaseModel):
-    # We accept a partial settings dict; user may send only a subset
-    # We'll coerce to a dict and merge with existing on save.
-    __root__: dict[str, Any]
-
-
 @app.put("/api/settings")
-def put_settings(patch: SettingsPatch):
-    """Merge the incoming dict into the existing settings and persist to disk."""
+def put_settings(patch: dict[str, Any]):
+    """Merge the incoming dict into the existing settings and persist to disk.
+
+    We accept a plain dict for JSON body to remain compatible with pydantic v2
+    and FastAPI's body parsing.
+    """
     try:
         cur = {}
         try:
@@ -141,9 +139,8 @@ def put_settings(patch: SettingsPatch):
         except FileNotFoundError:
             cur = {}
 
-        # shallow merge: update top-level keys only (sufficient for current shape)
-        incoming = patch.__root__
-        cur.update(incoming)
+        # shallow merge: update top-level keys only
+        cur.update(patch)
         save_settings_to_disk(cur)
         return cur
     except Exception as e:
