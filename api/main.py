@@ -14,6 +14,8 @@ from pydantic import BaseModel
 import os
 import yaml
 from typing import Any
+from pydantic import BaseModel, ConfigDict, Field
+import copy
 
 # Database setup
 # Prefer an explicit DATABASE_URL env var (production). When missing,
@@ -112,6 +114,43 @@ def save_settings_to_disk(settings: dict[str, Any], path: str | None = None) -> 
     os.replace(tmp, path)
 
 
+def deep_merge(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge b into a and return the merged dict (a is copied)."""
+    result = copy.deepcopy(a)
+    for k, v in b.items():
+        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+            result[k] = deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
+class DeadlineRemindersModel(BaseModel):
+    enabled: bool | None = True
+    reminder_24h: int | None = Field(default=24, ge=0)
+    reminder_6h: int | None = Field(default=6, ge=0)
+    reminder_2h: int | None = Field(default=2, ge=0)
+
+
+class WebUIModel(BaseModel):
+    default_timezone: str | None = None
+    items_per_page: int | None = Field(default=20, ge=1)
+
+
+class BotLabelsModel(BaseModel):
+    # allow arbitrary mapping of label keys to text
+    labels: dict[str, str] | None = None
+
+
+class SettingsModel(BaseModel):
+    model_config = ConfigDict(extra='allow')
+    external_domain: str | None = None
+    deadline_reminders: DeadlineRemindersModel | None = None
+    web_ui: WebUIModel | None = None
+    bot_labels: BotLabelsModel | None = None
+
+
+
 @app.get("/api/settings")
 def get_settings():
     """Return settings read from `config/settings.yaml` as JSON."""
@@ -139,10 +178,21 @@ def put_settings(patch: dict[str, Any]):
         except FileNotFoundError:
             cur = {}
 
-        # shallow merge: update top-level keys only
-        cur.update(patch)
-        save_settings_to_disk(cur)
-        return cur
+        # Validate incoming structure for known keys where possible
+        try:
+            # This will validate known sub-structure, but allow unknown keys
+            SettingsModel.model_validate(patch)
+        except Exception as e:
+            # raise a Bad Request that will be propagated to the caller
+            raise HTTPException(status_code=400, detail=f"Invalid settings payload: {e}")
+
+        # perform a deep merge so nested dicts are merged, not replaced
+        merged = deep_merge(cur, patch)
+        save_settings_to_disk(merged)
+        return merged
+    except HTTPException:
+        # re-raise FastAPI HTTPExceptions as-is so status codes are preserved
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

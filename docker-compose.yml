@@ -31,6 +31,8 @@ services:
         condition: service_healthy
     networks:
       - tmorder
+    volumes:
+      - ./config:/app/config
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -54,6 +56,8 @@ services:
         condition: service_healthy
     networks:
       - tmorder
+    volumes:
+      - ./config:/app/config
 
   web:
     build:
